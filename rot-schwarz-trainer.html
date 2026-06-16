@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rot-Schwarz-Trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9ECEF; --surface:#FFFFFF; --surface-2:#F4F6F8;
+  --ink:#19212B; --muted:#5C6772; --line:#D7DCE2; --edge:#A2AEBA;
+  --accent:#0F766E; --accent-press:#0B5A53; --accent-soft:#D6ECE9;
+  --amber:#D9990A; --amber-soft:#FBEFCF;
+  --red-node:#CF4438; --red-ink:#FFFFFF; --red-edge:#D6584D;
+  --black-node:#232B34; --black-ink:#EEF1F4;
+  --ok:#1C8A59; --ok-soft:#DCF1E6; --bad:#C5402E; --bad-soft:#F8E1DC;
+  --r:10px; --r-sm:7px;
+  --disp:"Space Grotesk",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#10151B; --surface:#1A222B; --surface-2:#212B35;
+    --ink:#E7ECF1; --muted:#94A1AE; --line:#2C3845; --edge:#5A6976;
+    --accent:#3BB6A6; --accent-press:#2E9488; --accent-soft:#173B38;
+    --amber:#E8B33A; --amber-soft:#3A2F12;
+    --red-node:#D9534A; --red-ink:#FFFFFF; --red-edge:#D9534A;
+    --black-node:#3A4753; --black-ink:#EEF1F4;
+    --ok:#3FB67E; --ok-soft:#16331F; --bad:#E0685A; --bad-soft:#3A1B16;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1040px;margin:0 auto;padding:22px 18px 60px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:4px}
+h1{font-family:var(--disp);font-weight:600;font-size:25px;letter-spacing:-.01em;margin:0}
+.sub{color:var(--muted);font-size:14px}
+.tagline{color:var(--muted);font-size:13.5px;margin:2px 0 16px;max-width:62ch}
+
+.modes{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);padding:3px;gap:2px;margin:0 0 14px}
+.modes button{font-family:var(--disp);font-weight:500;font-size:13.5px;border:0;background:transparent;color:var(--muted);padding:7px 15px;border-radius:var(--r-sm);cursor:pointer}
+.modes button[aria-pressed=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px;margin-bottom:14px}
+.field{display:flex;align-items:center;gap:6px}
+input[type=number],input[type=text]{font-family:var(--mono);font-size:14.5px;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 10px}
+input[type=number]{width:84px}
+input[type=text]{width:160px}
+input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btn{font-family:var(--sans);font-size:14px;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 13px;border-radius:var(--r-sm);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--edge)}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-press);border-color:var(--accent-press)}
+.btn.ghost{background:transparent}
+.spacer{flex:1 1 auto}
+
+.stage{position:relative;border:1px solid var(--line);border-radius:var(--r);background:
+  radial-gradient(var(--line) 1px,transparent 1px);
+  background-size:22px 22px;background-color:var(--surface);
+  overflow:auto;min-height:280px;max-height:62vh}
+.stage-inner{padding:6px}
+svg.tree{display:block}
+.empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px;text-align:center;pointer-events:none;padding:20px}
+
+.node{cursor:default}
+.node text{font-family:var(--mono);font-weight:600;font-size:14px;text-anchor:middle;dominant-baseline:central}
+.node circle.body{stroke-width:1.4}
+.node.red circle.body{fill:var(--red-node);stroke:var(--red-node)}
+.node.red text{fill:var(--red-ink)}
+.node.black circle.body{fill:var(--black-node);stroke:var(--black-node)}
+.node.black text{fill:var(--black-ink)}
+.node circle.halo{fill:none;stroke:var(--amber);stroke-width:0;opacity:0}
+.node.ring circle.halo{stroke-width:3;opacity:1}
+@media (prefers-reduced-motion:no-preference){
+  .node{transition:transform .3s cubic-bezier(.34,.9,.3,1)}
+  .node circle.body{transition:fill .25s,stroke .25s}
+  .node circle.halo{transition:opacity .2s,stroke-width .2s}
+  .node.enter{animation:pop .3s ease both}
+}
+@keyframes pop{from{opacity:0;transform:translate(var(--tx),var(--ty)) scale(.4)}to{opacity:1}}
+line.edge{stroke:var(--edge);stroke-width:1.6;stroke-linecap:round}
+line.edge.red{stroke:var(--red-edge);stroke-width:2.4}
+
+.statusbar{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin:12px 0}
+.chip{display:inline-flex;align-items:center;gap:7px;font-size:13px;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:5px 12px;color:var(--muted)}
+.chip b{color:var(--ink);font-family:var(--mono);font-weight:600}
+.chip.valid{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.dot.r{background:var(--red-node)} .dot.b{background:var(--black-node)}
+
+.explain{padding:14px 16px;display:flex;gap:14px;align-items:flex-start;min-height:74px}
+.verdict{flex:0 0 auto;font-family:var(--disp);font-weight:600;font-size:12.5px;letter-spacing:.02em;padding:5px 11px;border-radius:99px;white-space:nowrap;background:var(--surface-2);color:var(--muted)}
+.verdict.umfaerben{background:var(--accent-soft);color:var(--accent)}
+.verdict.einfach{background:var(--amber-soft);color:var(--amber)}
+.verdict.doppel{background:var(--bad-soft);color:var(--bad)}
+.explain .body{flex:1 1 auto}
+.explain .t{font-family:var(--disp);font-weight:500;font-size:16px;margin:0 0 2px}
+.explain .d{color:var(--muted);font-size:14px;margin:0}
+
+.stepctl{display:flex;align-items:center;gap:8px;padding:0 16px 14px}
+.progress{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-left:auto}
+
+.quiz{padding:0 16px 16px}
+.quiz .ask{font-size:14px;color:var(--muted);margin:0 0 9px}
+.quiz .opts{display:flex;flex-wrap:wrap;gap:8px}
+.quiz .opts .btn{flex:1 1 150px;justify-content:center;font-weight:500}
+.quiz .opts .btn.correct{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.quiz .opts .btn.wrong{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.quiz .score{display:flex;gap:16px;align-items:center;margin-top:12px;font-size:13px;color:var(--muted)}
+.quiz .score b{font-family:var(--mono);color:var(--ink)}
+.fb{font-size:13.5px;line-height:1.6;margin-top:11px;min-height:20px}
+.fb strong{font-weight:600}
+.fb b{font-family:var(--mono);font-weight:600;font-size:12.5px}
+.fb .rc{font-weight:500;color:var(--ink)}
+.fb.ok{color:var(--ok)} .fb.bad{color:var(--bad)}
+
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(12px);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:99px;font-size:13.5px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:9}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.hint{font-size:12.5px;color:var(--muted);margin-top:10px}
+.hidden{display:none!important}
+@media (max-width:560px){ input[type=text]{width:120px} .explain{flex-direction:column;gap:8px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Rot-Schwarz-Trainer</h1>
+    <span class="sub">Einfügen üben — Umfärben &amp; Rotationen</span>
+  </header>
+  <p class="tagline">Füge Werte ein und beobachte, wie der Baum balanciert. Im Quiz-Modus tippst du <em>vor</em> der Auflösung selbst, welcher Fall greift.</p>
+
+  <div class="modes" role="tablist" aria-label="Modus">
+    <button id="m-frei" aria-pressed="true">Frei</button>
+    <button id="m-schritt" aria-pressed="false">Schritt</button>
+    <button id="m-quiz" aria-pressed="false">Quiz</button>
+  </div>
+
+  <div class="panel toolbar">
+    <div class="field">
+      <input type="number" id="val" placeholder="Wert" min="0" max="999" aria-label="Einzufügender Wert">
+      <button class="btn primary" id="ins">Einfügen</button>
+    </div>
+    <button class="btn ghost" id="rand" title="Zufälligen Wert einfügen">Zufallswert</button>
+    <div class="field">
+      <input type="text" id="seq" placeholder="z. B. 10, 20, 30" aria-label="Sequenz">
+      <button class="btn ghost" id="loadseq">Sequenz laden</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn ghost" id="undo" title="Letztes Einfügen rückgängig">Rückgängig</button>
+    <button class="btn ghost" id="clear">Leeren</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="stage-inner"><svg class="tree" id="svg" role="img" aria-label="Rot-Schwarz-Baum"><g id="edges"></g><g id="nodes"></g></svg></div>
+    <div class="empty" id="empty">Noch leer — gib oben einen Wert ein und drücke „Einfügen“.</div>
+  </div>
+
+  <div class="statusbar">
+    <span class="chip valid" id="validchip"><span class="dot" style="background:currentColor"></span><span id="validtxt">gültiger Rot-Schwarz-Baum</span></span>
+    <span class="chip"><span>Knoten</span><b id="cnt">0</b></span>
+    <span class="chip"><span>Schwarzhöhe</span><b id="bh">0</b></span>
+    <span class="chip"><span class="dot r"></span>rot&nbsp;&nbsp;<span class="dot b"></span>schwarz</span>
+  </div>
+
+  <div class="panel">
+    <div class="explain">
+      <span class="verdict" id="verdict">bereit</span>
+      <div class="body">
+        <p class="t" id="etitle">Bereit zum Einfügen</p>
+        <p class="d" id="edetail">Wähle einen Modus und füge Werte ein. Tipp: Im Schritt-Modus siehst du jede Drehung einzeln.</p>
+      </div>
+    </div>
+
+    <div class="stepctl hidden" id="stepctl">
+      <button class="btn" id="prev">Zurück</button>
+      <button class="btn primary" id="next">Weiter</button>
+      <button class="btn ghost" id="finish">Überspringen</button>
+      <span class="progress" id="progress"></span>
+    </div>
+
+    <div class="quiz hidden" id="quizbox">
+      <p class="ask">Welcher Fall löst diese Verletzung auf? Tippe erst, dann zeigt „Weiter“ die Auflösung.</p>
+      <div class="opts">
+        <button class="btn" data-c="umfaerben">Umfärben</button>
+        <button class="btn" data-c="einfach">Einfachrotation</button>
+        <button class="btn" data-c="doppel">Doppelrotation</button>
+      </div>
+      <p class="fb" id="fb"></p>
+      <div class="score">
+        <span>Richtig: <b id="qok">0</b> / <b id="qall">0</b></span>
+        <span>Serie: <b id="qstreak">0</b></span>
+      </div>
+    </div>
+  </div>
+
+  <p class="hint" id="modehint"></p>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const RED='red',BLACK='black';
+function newTree(){const nil={color:BLACK,isNil:true};nil.left=nil.right=nil.parent=nil;return{root:nil,nil};}
+function ser(n){return n.isNil?null:{key:n.key,color:n.color,left:ser(n.left),right:ser(n.right)};}
+function lRot(T,x){const y=x.right;x.right=y.left;if(!y.left.isNil)y.left.parent=x;y.parent=x.parent;if(x.parent.isNil)T.root=y;else if(x===x.parent.left)x.parent.left=y;else x.parent.right=y;y.left=x;x.parent=y;}
+function rRot(T,x){const y=x.left;x.left=y.right;if(!y.right.isNil)y.right.parent=x;y.parent=x.parent;if(x.parent.isNil)T.root=y;else if(x===x.parent.right)x.parent.right=y;else x.parent.left=y;y.right=x;x.parent=y;}
+function bstInsertPlain(T,key){let y=T.nil,x=T.root;while(!x.isNil){y=x;if(key===x.key)return false;x=key<x.key?x.left:x.right;}
+  const z={key,color:RED,left:T.nil,right:T.nil,parent:y};if(y.isNil)T.root=z;else if(key<y.key)y.left=z;else y.right=z;
+  let n=z;while(n.parent.color===RED){const p=n.parent,g=p.parent,left=p===g.left,u=left?g.right:g.left;
+    if(u.color===RED){p.color=BLACK;u.color=BLACK;g.color=RED;n=g;}
+    else{const inner=left?(n===p.right):(n===p.left);if(inner){n=p;left?lRot(T,n):rRot(T,n);}n.parent.color=BLACK;n.parent.parent.color=RED;left?rRot(T,n.parent.parent):lRot(T,n.parent.parent);}}
+  T.root.color=BLACK;return true;}
+
+function insertFrames(T,key){
+  const frames=[];
+  const push=(title,detail,ring,decision,facts)=>frames.push({tree:ser(T.root),title,detail,ring:ring||[],decision:decision||null,facts:facts||null});
+  let y=T.nil,x=T.root;
+  while(!x.isNil){y=x;if(key===x.key)return null;x=key<x.key?x.left:x.right;}
+  const z0={key,color:RED,left:T.nil,right:T.nil,parent:y};
+  if(y.isNil)T.root=z0;else if(key<y.key)y.left=z0;else y.right=z0;
+  push('Einfügen',`${key} wird als roter Knoten an der BST-Position eingehängt.`,[key]);
+  let z=z0;
+  while(z.parent.color===RED){
+    const p=z.parent,g=p.parent,left=p===g.left,uncle=left?g.right:g.left;
+    if(uncle.color===RED){
+      push('Verletzung gefunden',`${z.key} und Elternknoten ${p.key} sind beide rot. Der Onkel ${uncle.key} ist ebenfalls rot — das ist ein voller 4-Knoten.`,[z.key,p.key,g.key,uncle.key],'umfaerben',
+        {z:z.key,p:p.key,g:g.key,u:uncle.key,uncleRed:true,inner:null,side:left?'links':'rechts'});
+      p.color=BLACK;uncle.color=BLACK;g.color=RED;
+      push('Umfärben (Fall 1)',`Eltern und Onkel werden schwarz, der Großelternknoten ${g.key} wird rot. Jetzt weiter oben prüfen.`,[g.key]);
+      z=g;
+    }else{
+      const inner=left?(z===p.right):(z===p.left);
+      push('Verletzung gefunden',`${z.key} und Elternknoten ${p.key} sind beide rot, der Onkel ist schwarz — ${inner?'Zickzack (Knick)':'gleiche Richtung'}.`,[z.key,p.key,g.key],inner?'doppel':'einfach',
+        {z:z.key,p:p.key,g:g.key,u:uncle.isNil?null:uncle.key,uncleRed:false,inner:inner,side:left?'links':'rechts'});
+      if(inner){const piv=z.parent;z=z.parent;left?lRot(T,z):rRot(T,z);
+        push('Doppelrotation · 1. Drehung',`${left?'Links':'Rechts'}rotation um ${piv.key} bringt die beiden roten Knoten in eine Linie. Jetzt wie bei der Einfachrotation.`,[piv.key]);}
+      const gg=z.parent.parent;z.parent.color=BLACK;gg.color=RED;
+      left?rRot(T,gg):lRot(T,gg);
+      push(inner?'Doppelrotation · 2. Drehung':'Einfachrotation',`${left?'Rechts':'Links'}rotation um ${gg.key}: der mittlere Schlüssel steht jetzt oben und wird schwarz, die äußeren werden seine roten Kinder.`,[z.parent.key]);
+    }
+  }
+  if(T.root.color===RED){T.root.color=BLACK;push('Wurzel schwarz',`Die Wurzel ${T.root.key} wird schwarz gefärbt (Eigenschaft 5).`,[T.root.key]);}
+  return frames;
+}
+
+// ---------- layout & render ----------
+const XGAP=46,YGAP=64,PAD=32,R=19;
+const SVG=document.getElementById('svg'),EDGES=document.getElementById('edges'),NODES=document.getElementById('nodes');
+const nodeEls=new Map();
+function layout(snap){
+  const nodes=[];let idx=0;
+  (function io(n,depth){if(!n)return;io(n.left,depth+1);n.__col=idx++;n.__depth=depth;nodes.push(n);io(n.right,depth+1);})(snap,0);
+  const byKey={};let maxCol=0,maxDepth=0;
+  nodes.forEach(n=>{n.__x=PAD+n.__col*XGAP;n.__y=PAD+n.__depth*YGAP;byKey[n.key]=n;maxCol=Math.max(maxCol,n.__col);maxDepth=Math.max(maxDepth,n.__depth);});
+  const edges=[];(function w(n){if(!n)return;[n.left,n.right].forEach(c=>{if(c){edges.push([n,c]);w(c);}});})(snap);
+  return {byKey,nodes,edges,w:PAD*2+maxCol*XGAP,h:PAD*2+maxDepth*YGAP};
+}
+function makeNode(key){
+  const g=document.createElementNS('http://www.w3.org/2000/svg','g');g.setAttribute('class','node');
+  const halo=document.createElementNS('http://www.w3.org/2000/svg','circle');halo.setAttribute('class','halo');halo.setAttribute('r',R+5);
+  const c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('class','body');c.setAttribute('r',R);
+  const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.textContent=key;
+  g.append(halo,c,t);return g;
+}
+function render(snap,ring){
+  document.getElementById('empty').style.display=snap?'none':'flex';
+  if(!snap){nodeEls.forEach(el=>el.remove());nodeEls.clear();EDGES.innerHTML='';SVG.setAttribute('viewBox','0 0 200 120');SVG.setAttribute('width',200);SVG.setAttribute('height',120);refreshStatus(null);return;}
+  const L=layout(snap);
+  SVG.setAttribute('viewBox',`0 0 ${L.w} ${L.h}`);SVG.setAttribute('width',L.w);SVG.setAttribute('height',L.h);
+  EDGES.innerHTML='';
+  L.edges.forEach(([a,b])=>{const ln=document.createElementNS('http://www.w3.org/2000/svg','line');
+    ln.setAttribute('class','edge'+(b.color===RED?' red':''));
+    ln.setAttribute('x1',a.__x);ln.setAttribute('y1',a.__y);ln.setAttribute('x2',b.__x);ln.setAttribute('y2',b.__y);EDGES.appendChild(ln);});
+  const present=new Set(L.nodes.map(n=>n.key));
+  for(const [k,el] of [...nodeEls]){if(!present.has(k)){el.remove();nodeEls.delete(k);}}
+  L.nodes.forEach(n=>{let g=nodeEls.get(n.key);
+    if(!g){g=makeNode(n.key);g.style.setProperty('--tx',n.__x+'px');g.style.setProperty('--ty',n.__y+'px');NODES.appendChild(g);nodeEls.set(n.key,g);g.classList.add('enter');setTimeout(()=>g.classList.remove('enter'),320);}
+    g.setAttribute('transform',`translate(${n.__x},${n.__y})`);
+    g.classList.toggle('red',n.color===RED);g.classList.toggle('black',n.color===BLACK);
+    g.classList.toggle('ring',!!ring&&ring.includes(n.key));});
+  refreshStatus(snap);
+}
+function blackHeight(snap){let bh=0,n=snap;while(n){if(n.color===BLACK)bh++;n=n.left;}return snap?bh+1:0;}
+function countNodes(snap){return snap?1+countNodes(snap.left)+countNodes(snap.right):0;}
+function refreshStatus(snap){document.getElementById('cnt').textContent=countNodes(snap);document.getElementById('bh').textContent=blackHeight(snap);}
+
+// ---------- app state ----------
+let T=newTree(),keys=[],mode='frei';
+let frames=null,fi=0,awaiting=false;
+const q={ok:0,all:0,streak:0};
+
+const el=id=>document.getElementById(id);
+function toast(msg){const t=el('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),1500);}
+function setVerdict(kind,label){const v=el('verdict');v.className='verdict'+(kind?(' '+kind):'');v.textContent=label;}
+function explain(title,detail){el('etitle').textContent=title;el('edetail').textContent=detail;}
+
+function rebuild(){T=newTree();keys.forEach(k=>bstInsertPlain(T,k));render(ser(T.root));}
+function liveSnap(){return ser(T.root);}
+
+const CASE_LABEL={umfaerben:'Umfärben',einfach:'Einfachrotation',doppel:'Doppelrotation'};
+
+function dirWords(side,inner){
+  const zDir=inner?(side==='links'?'rechts':'links'):side;
+  const single=side==='links'?'Rechtsrotation':'Linksrotation';
+  const first=side==='links'?'Linksrotation':'Rechtsrotation';
+  return {zDir,single,first,second:single};
+}
+function whyCorrect(c,f){
+  const d=dirWords(f.side,f.inner);
+  if(c==='umfaerben')
+    return `Der Onkel ${f.u} ist <b>rot</b>. Eltern ${f.p}, Onkel ${f.u} und der neue rote Knoten bilden zusammen einen 4-Knoten. Den splittet man durch <b>Umfärben</b>: ${f.p} und ${f.u} werden schwarz, der Großelternknoten ${f.g} wird rot. Keine Drehung nötig — beide Teilbäume behalten ihre Schwarzhöhe.`;
+  if(c==='einfach')
+    return `Der Onkel ist <b>schwarz</b>, und ${f.p} und ${f.z} zeigen in <b>dieselbe Richtung</b> (beide nach ${f.side}) — eine gerade Linie. Eine einzige <b>${d.single}</b> um ${f.g} hebt den mittleren Schlüssel ${f.p} nach oben; ${f.g} und ${f.z} werden seine roten Kinder.`;
+  return `Der Onkel ist <b>schwarz</b>, aber ${f.z} ist das <b>innere</b> Enkelkind: ${f.p} geht nach ${f.side}, ${f.z} nach ${d.zDir} — ein <b>Zickzack</b>. Erst eine ${d.first} um ${f.p} (das macht daraus eine gerade Linie), dann eine ${d.second} um ${f.g}. So landet der mittlere Schlüssel ${f.z} oben und wird schwarz.`;
+}
+function whyWrong(chosen,correct,f){
+  if(chosen==='umfaerben')
+    return `<b>Umfärben</b> ist nur richtig, wenn der Onkel <b>rot</b> ist. Hier ist der Onkel ${f.u?('('+f.u+') '):''}schwarz${f.u?'':' (ein leeres NIL-Blatt)'} — also muss rotiert werden, nicht umgefärbt.`;
+  if(chosen==='einfach'&&correct==='doppel')
+    return `Eine <b>Einfachrotation</b> reicht nur bei einer geraden Linie. Hier liegt ein Zickzack vor (${f.p} nach ${f.side}, ${f.z} nach ${f.side==='links'?'rechts':'links'}), deshalb braucht es zwei Drehungen.`;
+  if(chosen==='doppel'&&correct==='einfach')
+    return `Eine <b>Doppelrotation</b> ist nur beim Zickzack nötig. Hier zeigen ${f.p} und ${f.z} in dieselbe Richtung (gerade Linie), also genügt eine einzige Drehung.`;
+  if((chosen==='einfach'||chosen==='doppel')&&correct==='umfaerben')
+    return `Hier wird gar nicht rotiert: der Onkel ${f.u} ist <b>rot</b>, also nur umfärben (4-Knoten splitten).`;
+  return '';
+}
+
+function doFreeInsert(key){
+  const f=insertFrames(T,key);
+  if(!f){toast(key+' ist schon im Baum');return false;}
+  keys.push(key);
+  const fixes=f.filter(x=>x.decision);
+  const last=fixes.length?fixes[fixes.length-1].decision:null;
+  render(f[f.length-1].tree,[key]);
+  setVerdict(last,last?CASE_LABEL[last]:'eingefügt');
+  explain(`${key} eingefügt`, fixes.length? `Ausgeglichen mit: ${fixes.map(x=>CASE_LABEL[x.decision]).join(' → ')}.` : `Keine Verletzung — direkt als rotes Blatt eingehängt.`);
+  return true;
+}
+
+function startSteps(key){
+  const f=insertFrames(T,key);
+  if(!f){toast(key+' ist schon im Baum');return;}
+  keys.push(key);frames=f;fi=0;awaiting=false;
+  setControlsDuringSteps(true);
+  showFrame(0);
+  if(mode==='quiz') maybeAsk();
+}
+function showFrame(i){
+  fi=i;const fr=frames[i];
+  render(fr.tree,fr.ring);
+  const dec=fr.decision;
+  setVerdict(dec, dec?('Welcher Fall?'):(/rotation/i.test(fr.title)||/Umf/.test(fr.title)?CASE_LABEL[guessFromTitle(fr.title)]||fr.title:fr.title));
+  if(mode==='quiz'&&dec&&awaiting) setVerdict(dec,'Dein Tipp?');
+  explain(fr.title,fr.detail);
+  el('progress').textContent=`Schritt ${i+1} / ${frames.length}`;
+  el('prev').disabled=(i===0)||awaiting;
+  el('next').disabled=awaiting||(i>=frames.length-1);
+}
+function guessFromTitle(t){if(/Umf/.test(t))return'umfaerben';if(/Einfach/.test(t))return'einfach';if(/Doppel/.test(t))return'doppel';return null;}
+
+function nextStep(){if(awaiting)return;if(!el('quizbox').classList.contains('hidden'))hideQuiz();if(fi<frames.length-1){showFrame(fi+1);if(mode==='quiz')maybeAsk();}else finishSteps();}
+function prevStep(){if(awaiting||fi<=0)return;showFrame(fi-1);}
+function finishSteps(){const final=frames[frames.length-1].tree;render(final);frames=null;awaiting=false;setControlsDuringSteps(false);
+  setVerdict(null,'fertig');explain('Eingefügt','Baum ist wieder ein gültiger Rot-Schwarz-Baum. Nächsten Wert eingeben.');el('quizbox')&&hideQuiz();}
+
+function maybeAsk(){const fr=frames[fi];if(fr&&fr.decision){awaiting=true;showQuiz(fr.decision);showFrame(fi);}}
+function showQuiz(){el('quizbox').querySelectorAll('.opts .btn').forEach(b=>{b.classList.remove('correct','wrong');b.disabled=false;});el('fb').textContent='';el('fb').className='fb';el('quizbox').classList.remove('hidden');}
+function hideQuiz(){el('quizbox').classList.add('hidden');}
+function answer(choice){
+  if(!awaiting)return;const correct=frames[fi].decision,f=frames[fi].facts||{};q.all++;
+  const opts=el('quizbox').querySelectorAll('.opts .btn');
+  opts.forEach(b=>{b.disabled=true;if(b.dataset.c===correct)b.classList.add('correct');if(b.dataset.c===choice&&choice!==correct)b.classList.add('wrong');});
+  const fb=el('fb');
+  if(choice===correct){q.ok++;q.streak++;
+    fb.innerHTML='<strong>Richtig — '+CASE_LABEL[correct]+'.</strong> '+whyCorrect(correct,f);fb.className='fb ok';}
+  else{q.streak=0;
+    fb.innerHTML='<strong>Nicht ganz.</strong> '+whyWrong(choice,correct,f)+'<br><span class="rc">Richtig wäre <b>'+CASE_LABEL[correct]+'</b>:</span> '+whyCorrect(correct,f);fb.className='fb bad';}
+  el('qok').textContent=q.ok;el('qall').textContent=q.all;el('qstreak').textContent=q.streak;
+  awaiting=false;
+  setVerdict(correct,CASE_LABEL[correct]);
+  el('next').disabled=(fi>=frames.length-1);el('prev').disabled=true;
+}
+
+function setControlsDuringSteps(active){
+  ['ins','rand','loadseq','undo','clear','val','seq'].forEach(id=>el(id).disabled=active);
+  el('stepctl').classList.toggle('hidden',!(active&&mode!=='frei'));
+}
+
+// ---------- handlers ----------
+function handleInsert(){
+  const raw=el('val').value.trim();if(raw==='')return;
+  const key=parseInt(raw,10);if(isNaN(key)){toast('Bitte eine ganze Zahl');return;}
+  el('val').value='';el('val').focus();
+  if(mode==='frei')doFreeInsert(key);else startSteps(key);
+}
+el('ins').onclick=handleInsert;
+el('val').addEventListener('keydown',e=>{if(e.key==='Enter')handleInsert();});
+el('rand').onclick=()=>{let k,guard=0;do{k=Math.floor(Math.random()*99)+1;}while(keys.includes(k)&&guard++<200);el('val').value=k;handleInsert();};
+el('loadseq').onclick=()=>{
+  const parts=el('seq').value.split(/[,\s]+/).map(s=>s.trim()).filter(Boolean).map(Number).filter(n=>!isNaN(n));
+  if(!parts.length){toast('Keine Werte erkannt');return;}
+  if(frames){finishSteps();}
+  let added=0;parts.forEach(k=>{if(bstInsertPlain(T,k)){keys.push(k);added++;}});
+  render(liveSnap());setVerdict(null,'geladen');explain(`${added} Werte eingefügt`,'Sequenz geladen. Wechsle zu „Schritt“ oder „Quiz“, um den nächsten Wert zu üben.');
+  el('seq').value='';
+};
+el('undo').onclick=()=>{if(!keys.length){toast('Nichts zum Rückgängigmachen');return;}keys.pop();rebuild();setVerdict(null,'bereit');explain('Rückgängig','Letztes Einfügen entfernt.');};
+el('clear').onclick=()=>{keys=[];T=newTree();render(null);setVerdict(null,'bereit');explain('Geleert','Baum ist leer. Neuer Versuch.');q.ok=q.all=q.streak=0;el('qok').textContent=0;el('qall').textContent=0;el('qstreak').textContent=0;};
+el('next').onclick=nextStep;el('prev').onclick=prevStep;el('finish').onclick=finishSteps;
+el('quizbox').querySelectorAll('.opts .btn').forEach(b=>b.onclick=()=>answer(b.dataset.c));
+
+const HINTS={frei:'Frei-Modus: Einfügen wird sofort ausbalanciert. Gut zum Gegenprüfen deiner Handrechnung.',
+  schritt:'Schritt-Modus: jede Umfärbung und Drehung einzeln mit „Weiter“. Rotationen siehst du als Bewegung.',
+  quiz:'Quiz-Modus: bei jeder Verletzung tippst du zuerst den Fall, dann wird aufgelöst. Serie zählt richtige in Folge.'};
+function setMode(m){
+  if(frames)finishSteps();
+  mode=m;
+  ['frei','schritt','quiz'].forEach(x=>el('m-'+x).setAttribute('aria-pressed',String(x===m)));
+  el('stepctl').classList.toggle('hidden',m==='frei');
+  el('quizbox').classList.add('hidden');
+  el('modehint').textContent=HINTS[m];
+  setVerdict(null,'bereit');
+  if(m==='frei')explain('Frei-Modus','Werte werden sofort eingefügt und ausbalanciert.');
+  else if(m==='schritt')explain('Schritt-Modus','Füge einen Wert ein und klicke dich mit „Weiter“ durch jede Drehung.');
+  else explain('Quiz-Modus','Füge einen Wert ein. Bei jeder Verletzung tippst du selbst den richtigen Fall.');
+}
+el('m-frei').onclick=()=>setMode('frei');el('m-schritt').onclick=()=>setMode('schritt');el('m-quiz').onclick=()=>setMode('quiz');
+
+// init
+render(null);setMode('frei');
+</script>
+</body>
+</html>
